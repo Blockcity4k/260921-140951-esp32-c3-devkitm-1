@@ -13,6 +13,9 @@ public:
     void handleClient();
     
 private:
+    void handleRoot(AsyncWebServerRequest *request);
+    void handleDataJson(AsyncWebServerRequest *request);
+    void handleNotFound(AsyncWebServerRequest *request);
     AsyncWebServer* server;
     Sensor& sensor;
     DataHandler& dataHandler;
