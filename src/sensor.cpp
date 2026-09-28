@@ -20,7 +20,7 @@ int Sensor::getAverageMoisture() {
     for (int i = 0; i < numSamples; i++) {
         int reading = analogRead(pin);
         // Add basic validation to filter out bad readings
-        if (reading > 0 && reading < 4095) {
+        if (reading >= 0 && reading <= 4095) {
             sum += reading;
             validReadings++;
         }

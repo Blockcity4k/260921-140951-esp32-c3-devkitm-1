@@ -6,15 +6,16 @@
 #include "sensor.h"
 #include "data_handler.h"
 
-class WebServer {
+class MyWebServer {
 public:
-    WebServer(Sensor& sensor, DataHandler& data);
+    MyWebServer(Sensor& sensor, DataHandler& data);
     void begin();
     void handleClient();
     
 private:
     void handleRoot(AsyncWebServerRequest *request);
     void handleDataJson(AsyncWebServerRequest *request);
+    void handleDataHtml(AsyncWebServerRequest *request);
     void handleNotFound(AsyncWebServerRequest *request);
     AsyncWebServer* server;
     Sensor& sensor;

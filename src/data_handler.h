@@ -11,6 +11,7 @@ public:
     int getLatestReading();
     unsigned long getLatestTimestamp();
     void getRecentReadings(int maxReadings, int* outputArray, unsigned long* timeStamps);
+    int getAverageReading();
     
 private:
     static const int MAX_HISTORY = 100;

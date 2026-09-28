@@ -1,3 +1,4 @@
+/*
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h> 
@@ -163,3 +164,4 @@ void loop() {
 
   delay(30000); 
 }
+*/
