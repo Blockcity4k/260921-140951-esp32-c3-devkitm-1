@@ -15,7 +15,7 @@
 #define SENSOR_PIN 0
 
 // Timing Configuration
-#define UPDATE_INTERVAL 1000 
+#define UPDATE_INTERVAL 15000 // 15 seconds (temp for testing; later change to 4 hr)
 #define WIFI_CHECK_INTERVAL 30000  // 30 seconds
 #define DATA_HISTORY_SIZE 600  // Retain readings in RAM even when no browser is connected
 
