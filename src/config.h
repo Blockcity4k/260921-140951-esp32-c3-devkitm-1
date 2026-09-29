@@ -17,15 +17,16 @@
 // Timing Configuration
 #define UPDATE_INTERVAL 1000 
 #define WIFI_CHECK_INTERVAL 30000  // 30 seconds
+#define DATA_HISTORY_SIZE 600  // Retain readings in RAM even when no browser is connected
 
 // Sensor Configuration
-#define DRY_THRESHOLD 55
-#define MOISTURE_SAMPLES 20
+#define DRY_THRESHOLD 60
+#define MOISTURE_SAMPLES 200
 
 // ADC calibration points for the moisture estimate (0-4095).
 // These are example values: replace them with readings from your own sensor.
 // The raw value may rise or fall as the soil gets wetter; either direction works.
-#define MOISTURE_RAW_DRY 500
+#define MOISTURE_RAW_DRY 60
 #define MOISTURE_RAW_25  750
 #define MOISTURE_RAW_50  1000
 #define MOISTURE_RAW_75  1500

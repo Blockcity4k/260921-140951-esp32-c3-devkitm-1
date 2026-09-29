@@ -3,10 +3,14 @@
 DataHandler::DataHandler() {
     readIndex = 0;
     readingCount = 0;
+    totalReadingCount = 0;
 }
 
 void DataHandler::begin() {
     // Initialize data structures
+    readIndex = 0;
+    readingCount = 0;
+    totalReadingCount = 0;
     for (int i = 0; i < MAX_HISTORY; i++) {
         moistureHistory[i] = 0;
         timestampHistory[i] = 0;
@@ -21,6 +25,7 @@ void DataHandler::addReading(int moisture, unsigned long timestamp) {
     if (readingCount < MAX_HISTORY) {
         readingCount++;
     }
+    totalReadingCount++;
 }
 
 int DataHandler::getLatestReading() {
@@ -35,7 +40,15 @@ unsigned long DataHandler::getLatestTimestamp() {
     return timestampHistory[index];
 }
 
-void DataHandler::getRecentReadings(int maxReadings, int* outputArray, unsigned long* timeStamps) {
+int DataHandler::getReadingCount() {
+    return readingCount;
+}
+
+uint64_t DataHandler::getTotalReadingCount() {
+    return totalReadingCount;
+}
+
+int DataHandler::getRecentReadings(int maxReadings, int* outputArray, unsigned long* timeStamps) {
     int actualReadings = min(readingCount, maxReadings);
     int startIndex = (readIndex - actualReadings + MAX_HISTORY) % MAX_HISTORY;
     
@@ -44,4 +57,6 @@ void DataHandler::getRecentReadings(int maxReadings, int* outputArray, unsigned 
         outputArray[i] = moistureHistory[index];
         timeStamps[i] = timestampHistory[index];
     }
+
+    return actualReadings;
 }

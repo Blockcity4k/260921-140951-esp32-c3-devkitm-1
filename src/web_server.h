@@ -15,6 +15,7 @@ public:
 private:
     void handleRoot(AsyncWebServerRequest *request);
     void handleDataJson(AsyncWebServerRequest *request);
+    void handleHistoryJson(AsyncWebServerRequest *request);
     void handleDataHtml(AsyncWebServerRequest *request);
     void handleNotFound(AsyncWebServerRequest *request);
     AsyncWebServer* server;

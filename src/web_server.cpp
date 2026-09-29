@@ -1,7 +1,10 @@
 #include "web_server.h"
 #include "config.h"
 #include <ArduinoJson.h>
-
+#include <vector>
+/*
+CHANGE: graph scale lower like 0 to 100
+*/
 #define STRINGIFY_VALUE(value) #value
 #define STRINGIFY(value) STRINGIFY_VALUE(value)
 
@@ -56,6 +59,10 @@ void MyWebServer::begin() {
     server->on("/data.json", [this](AsyncWebServerRequest *request){
         handleDataJson(request);
     });
+
+    server->on("/history.json", [this](AsyncWebServerRequest *request){
+        handleHistoryJson(request);
+    });
     
     server->on("/data.html", [this](AsyncWebServerRequest *request){
         handleDataHtml(request);
@@ -109,25 +116,59 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
 </head>
 <body>
     <div class="container">
-        <h1>🌱 ESP32 Plant Monitor Dashboard</h1>
+
+        <!-- visible, local title based on user input and stays even on refresh  -->
+
+        <h1 id="dashboardTitle" contenteditable="true">Enter title here!</h1>
+        <script>
+            const title = document.getElementById("dashboardTitle");
+
+            const savedTitle = localStorage.getItem("plantTitle");
+
+            if (savedTitle) {
+                title.textContent = savedTitle;
+            }
+
+            title.addEventListener("input", function() {
+                localStorage.setItem("plantTitle", title.textContent);
+            });
+        </script>
+
+        <!-- display sensor connection status -->
+
         <div id="status" class="status">Connecting to sensor...</div>
+
+        <!-- dashboard -->
+
         <div class="dashboard">
+
+            <!-- estimated moisture card -->
+
             <div class="sensor-card">
                 <div class="sensor-label">Estimated Moisture</div>
                 <div id="moisture-value" class="sensor-value">--</div>
                 <div class="sensor-label">calibrated estimate</div>
             </div>
+
+            <!-- raw ADC reading card -->
+
             <div class="sensor-card">
                 <div class="sensor-label">Raw ADC Reading</div>
                 <div id="raw-value" class="sensor-value">--</div>
                 <div class="sensor-label">0 to 4095</div>
             </div>
+
+            <!-- last reading card -->
+
             <div class="sensor-card">
                 <div class="sensor-label">Last Reading</div>
                 <div id="timestamp" class="sensor-value">--</div>
                 <div class="sensor-label">seconds ago</div>
             </div>
         </div>
+
+        <!-- graph -->
+
         <div class="graph-container">
             <h2>Sensor History</h2>
             <canvas id="rawChart" class="plot" aria-label="Raw sensor readings over time"></canvas>
@@ -147,7 +188,15 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
         var readings = [];
         var lastPlottedTimestamp = null;
         var maxPlotReadings = 80;
+        var totalReadings = 0;
 
+        function updatePlotLabel() {
+            document.getElementById('plot-range').textContent =
+                'Showing latest ' + readings.length + ' plotted readings; ' +
+                totalReadings + ' readings captured since boot';
+        }
+
+        // data graph config
         function drawPlot() {
             const canvas = document.getElementById('rawChart');
             const bounds = canvas.getBoundingClientRect();
@@ -191,7 +240,7 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
             context.fillText('Newer', right, height - 5);
 
             if (readings.length === 0) {
-                document.getElementById('plot-range').textContent = 'Waiting for sensor readings';
+                updatePlotLabel();
                 return;
             }
 
@@ -208,9 +257,7 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
             });
             context.stroke();
 
-            const latest = readings[readings.length - 1];
-            document.getElementById('plot-range').textContent =
-                readings.length + ' readings; latest raw value: ' + latest.raw;
+            updatePlotLabel();
         }
 
         function updateStatus() {
@@ -238,7 +285,9 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
                     throw new Error('HTTP ' + response.status);
                 }
                 const data = await response.json();
+                totalReadings = Number(data.totalReadings) || totalReadings;
                 updateDashboard(data);
+                updatePlotLabel();
             } catch (error) {
                 console.error('Error fetching data:', error);
                 isConnected = false;
@@ -284,9 +333,28 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
             fetchData();
         }
 
+        async function loadHistory() {
+            try {
+                const response = await fetch('/history.json', { cache: 'no-store' });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const history = await response.json();
+                totalReadings = Number(history.totalReadings) || 0;
+                readings = (history.samples || []).map(function(sample) {
+                    return { timestamp: sample[0], raw: Number(sample[1]) };
+                }).slice(-maxPlotReadings);
+                lastPlottedTimestamp = readings.length
+                    ? readings[readings.length - 1].timestamp
+                    : null;
+                drawPlot();
+            } catch (error) {
+                console.error('Error loading sensor history:', error);
+            }
+        }
+
         // Monitor continuously at the same interval used by the sensor loop.
-        window.addEventListener('load', function() {
-            fetchData();
+        window.addEventListener('load', async function() {
+            await loadHistory();
+            await fetchData();
             setInterval(fetchData, Math.max(1, POLL_INTERVAL_MS));
             setInterval(updateReadingAge, 1000);
             window.addEventListener('resize', drawPlot);
@@ -306,6 +374,7 @@ void MyWebServer::handleDataJson(AsyncWebServerRequest *request) {
 
     bool hasReading = moisture != -1;
     doc["hasReading"] = hasReading;
+    doc["totalReadings"] = dataHandler.getTotalReadingCount();
     doc["raw"] = hasReading ? moisture : 0;
     doc["moisturePercent"] = hasReading ? estimateMoisturePercent(moisture) : 0;
     if (hasReading) {
@@ -315,6 +384,27 @@ void MyWebServer::handleDataJson(AsyncWebServerRequest *request) {
     }
     doc["timestamp"] = timestamp;
     
+    String response;
+    serializeJson(doc, response);
+    request->send(200, "application/json", response);
+}
+
+void MyWebServer::handleHistoryJson(AsyncWebServerRequest *request) {
+    const int availableReadings = dataHandler.getReadingCount();
+    std::vector<int> rawReadings(availableReadings);
+    std::vector<unsigned long> timestamps(availableReadings);
+    const int readingCount = dataHandler.getRecentReadings(
+        availableReadings, rawReadings.data(), timestamps.data());
+
+    JsonDocument doc;
+    doc["totalReadings"] = dataHandler.getTotalReadingCount();
+    JsonArray samples = doc["samples"].to<JsonArray>();
+    for (int index = 0; index < readingCount; ++index) {
+        JsonArray sample = samples.add<JsonArray>();
+        sample.add(timestamps[index]);
+        sample.add(rawReadings[index]);
+    }
+
     String response;
     serializeJson(doc, response);
     request->send(200, "application/json", response);
