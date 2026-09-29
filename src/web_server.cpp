@@ -150,12 +150,20 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
                 <div class="sensor-label">calibrated estimate</div>
             </div>
 
-            <!-- raw ADC reading card -->
+            <!-- raw ADC reading card 
 
             <div class="sensor-card">
                 <div class="sensor-label">Raw ADC Reading</div>
                 <div id="raw-value" class="sensor-value">--</div>
                 <div class="sensor-label">0 to 4095</div>
+            </div>
+            -->
+
+            <!-- time until next reading card -->
+
+            <div class="sensor-card">
+                <div class="sensor-label">Next reading in</div>
+                <div id="countdown" class="sensor-value">--:--:--</div>
             </div>
 
             <!-- last reading card -->
@@ -295,6 +303,7 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
             status.textContent = isConnected ? 'Connected to ESP32 Sensor' : 'No connection to ESP32';
         }
 
+        // update function for time since last reading
         function updateReadingAge() {
             const timestamp = document.getElementById('timestamp');
             if (lastReadingAgeMs === null) {
@@ -304,6 +313,31 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
 
             const elapsedMs = Date.now() - ageReceivedAt;
             timestamp.textContent = Math.floor((lastReadingAgeMs + elapsedMs) / 1000);
+        }
+
+        //update function for time until next reading
+    
+        function updateCountdown() {
+            const countdown = document.getElementById('countdown');
+    
+            if (lastReadingAgeMs === null) {
+                countdown.textContent = '--:--:--';
+                return;
+            }
+        
+            const elapsedMs = Date.now() - ageReceivedAt;
+            const elapsedSeconds = Math.floor(elapsedMs / 1000);
+        
+            const remainingSeconds = Math.max(0, 15 - elapsedSeconds);
+        
+            const hours = Math.floor(remainingSeconds / 3600);
+            const minutes = Math.floor((remainingSeconds % 3600) / 60);
+            const seconds = remainingSeconds % 60;
+        
+            countdown.textContent =
+                String(hours).padStart(2, '0') + ':' +
+                String(minutes).padStart(2, '0') + ':' +
+                String(seconds).padStart(2, '0');
         }
 
         // Function to fetch data from ESP32 and update the dashboard
@@ -388,6 +422,7 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
             await fetchData();
             setInterval(fetchData, Math.max(1, POLL_INTERVAL_MS));
             setInterval(updateReadingAge, 1000);
+            setInterval(updateCountdown, 1000);
             window.addEventListener('resize', drawPlot);
         });
     </script>
