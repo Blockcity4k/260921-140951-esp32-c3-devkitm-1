@@ -187,7 +187,7 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
         var ageReceivedAt = 0;
         var readings = [];
         var lastPlottedTimestamp = null;
-        var maxPlotReadings = 80;
+        var maxPlotReadings = 12;
         var totalReadings = 0;
 
         function updatePlotLabel() {
@@ -197,6 +197,7 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
         }
 
         // data graph config
+    
         function drawPlot() {
             const canvas = document.getElementById('rawChart');
             const bounds = canvas.getBoundingClientRect();
@@ -223,8 +224,10 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
             context.strokeStyle = '#d8e2dc';
             context.fillStyle = '#52645a';
 
+            // y axis
+    
             for (let step = 0; step <= 4; step++) {
-                const value = Math.round(4095 - step * 4095 / 4);
+                const value = Math.round(200 - step * 200 / 4);
                 const y = top + step * graphHeight / 4;
                 context.beginPath();
                 context.moveTo(left, y);
@@ -233,17 +236,26 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
                 context.fillText(String(value), left - 8, y);
             }
 
-            context.textAlign = 'left';
+            // x axis
+    
+            context.textAlign = 'center';
             context.textBaseline = 'alphabetic';
-            context.fillText('Older', left, height - 5);
-            context.textAlign = 'right';
-            context.fillText('Newer', right, height - 5);
+
+            const xLabels = ['-4 min', '-3 min', '-2 min', '-1 min', 'Now'];
+            //const xLabels = ['-48hr', '-36hr', '-24hr', '-12hr', 'Now'];
+            
+            for (let i = 0; i < xLabels.length; i++) {
+                const x = left + i * (right - left) / (xLabels.length - 1);
+                context.fillText(xLabels[i], x, height - 5);
+            }
 
             if (readings.length === 0) {
                 updatePlotLabel();
                 return;
             }
 
+            // creating line that connects points on graph
+    
             context.strokeStyle = '#21834a';
             context.lineWidth = 2;
             context.beginPath();
@@ -251,15 +263,32 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
                 const x = readings.length === 1
                     ? (left + right) / 2
                     : left + index * (right - left) / (readings.length - 1);
-                const y = bottom - Math.max(0, Math.min(4095, reading.raw)) * graphHeight / 4095;
+                const y = bottom - Math.max(0, Math.min(200, reading.raw)) * graphHeight / 200;
                 if (index === 0) context.moveTo(x, y);
                 else context.lineTo(x, y);
             });
             context.stroke();
 
+            // adding points to graph
+    
+            context.fillStyle = '#21834a';
+            readings.forEach(function(reading, index) {
+                const x = readings.length === 1
+                    ? (left + right) / 2
+                    : left + index * (right - left) / (readings.length - 1);
+            
+                const y = bottom - Math.max(0, Math.min(200, reading.raw)) * graphHeight / 200;
+            
+                context.beginPath();
+                context.arc(x, y, 4, 0, 2 * Math.PI);
+                context.fill();
+            });
+
             updatePlotLabel();
         }
 
+        // function that updates sensor status
+    
         function updateStatus() {
             const status = document.getElementById('status');
             status.className = isConnected ? 'status connected' : 'status disconnected';
@@ -278,6 +307,7 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
         }
 
         // Function to fetch data from ESP32 and update the dashboard
+    
         async function fetchData() {
             try {
                 const response = await fetch('/data.json', { cache: 'no-store' });
@@ -296,6 +326,7 @@ void MyWebServer::handleRoot(AsyncWebServerRequest *request) {
         }
 
         // Update the dashboard with new data
+    
         function updateDashboard(data) {
             isConnected = true;
             document.getElementById('moisture-value').textContent = data.hasReading
