@@ -24,8 +24,7 @@
 #define MOISTURE_SAMPLES 200
 
 // ADC calibration points for the moisture estimate (0-4095).
-// These are example values: replace them with readings from your own sensor.
-// The raw value may rise or fall as the soil gets wetter; either direction works.
+// moitsure_raw_percentage, more moist = lower number
 #define MOISTURE_RAW_DRY 60
 #define MOISTURE_RAW_25  750
 #define MOISTURE_RAW_50  1000
